@@ -38,10 +38,15 @@ public class Board{
 	}
 	
 	public boolean validateMove(char colorIn, byte[] moveIn) throws Exception{
+		
 		return validateMove(colorIn, moveIn, pieces);
 	}
 	
 	private boolean validateMove(char colorIn, byte[] moveIn, Piece[][] piecesIn) throws Exception{
+		if(moveIn.length%2!=0||moveIn.length<4) {
+			//not a complete move
+			return false;
+		}
 		//if the position being moved from is empty or contains a piece that is not of the user's color or
 		//if the move is to the same position as the current position
 		if(piecesIn[moveIn[0]][moveIn[1]]==null || 
@@ -52,7 +57,7 @@ public class Board{
 		
 		byte vDelta = (byte)(moveIn[2]-moveIn[0]);
 		byte hDelta = (byte)(moveIn[3]-moveIn[1]);
-
+		
 		//if the move is within the bounds of the board and
 		//if the move would be to an empty space
 		if(moveIn[2]>=0 && moveIn[2]<8 && moveIn[3]>=0 && moveIn[3]<8 && piecesIn[moveIn[2]][moveIn[3]]==null){
@@ -112,14 +117,14 @@ public class Board{
 		}
 		return success;
 	}
-
+	
 	public boolean kingPiece(byte[] move, char colorIn) {
 		boolean success=false;
 		byte lastRow=move[move.length-2];
 		byte lastCol=move[move.length-1];
 		if((colorIn=='R' && lastRow==0) || (colorIn=='B' && lastRow==7)) {
-			
-			pieces[lastRow][lastCol]=new Piece(pieces[lastRow][lastCol]);
+			//TODO: is it really necessary to create a new piece?
+			//pieces[lastRow][lastCol]=new Piece(pieces[lastRow][lastCol]);
 			pieces[lastRow][lastCol].king = true;
 			success=true;
 		}
@@ -143,7 +148,7 @@ public class Board{
 		}
 		return success;
 	}
-	
+		
 	public String toString(){
 		String str="    1  2  3  4  5  6  7  8\n";
 		for(int r=0; r<17; r++){
@@ -164,6 +169,5 @@ public class Board{
 		}
 		return str;
 	}
-	
 	
 }

@@ -7,7 +7,7 @@ public class CheckersCLI{
 	
 	public static void main(String[] args){
 		Scanner sc=new Scanner(System.in);
-		
+
 		boolean validLevel=false;
 		byte gameLevel=1;
 		while(validLevel==false) {
@@ -18,21 +18,22 @@ public class CheckersCLI{
 				System.out.println("INVALID DIFFICULTY LEVEL: The difficulty level must be an integer between 1 and 255\n");
 			}
 		}
-
-		CheckersLogic game = new CheckersLogic(gameLevel);
 		
+		CheckersLogic game = new CheckersLogic(gameLevel);
+		System.out.println(" "+(int)game.getWinner());
 		//Test setup methods
+		//game.debugSimpleOptTest();
 		//game.debugTestKingSetup();
 		//game.debugTestDoubleHopRed();
 		//game.debugTestDoubleHopBlack();
 		
-		String input;
+		String input="";
 		System.out.println(game.getBoard());
 		System.out.println();
 		System.out.print("You are Red, make the first move:");
-		input = sc.nextLine().toUpperCase();
 		try {
-			while(game.bothHavePieces() && !input.equals("0")){
+			while(!game.gameOver() && !input.equals("0")){
+				input = sc.nextLine().toUpperCase();
 				byte[] move;
 				try {
 					move=parseMove(input);
@@ -43,14 +44,21 @@ public class CheckersCLI{
 				}
 								
 				if(game.acceptMove(move)) {
-					game.computerMove();
-					System.out.println("My move: "+moveToString(game.getLastMove()));
-					System.out.println(game.getBoard());
-					System.out.print("Your move: ");
+					if(game.gameOver()) {
+						System.out.println("GAME OVER: YOU WIN!");
+					}else {
+						game.computerMove();
+						System.out.println("My move: "+moveToString(game.getLastMove()));
+						System.out.println(game.getBoard());
+						if(game.gameOver()) {
+							System.out.println("GAME OVER: I WIN!");
+						}else {
+							System.out.print("Your move: ");
+						}
+					}
 				}else{
 					System.out.println("That isn't a valid move. Try again.");
 				}
-				input = sc.nextLine().toUpperCase();
 			}
 		}catch(Exception e) {
 			e.printStackTrace();
@@ -60,7 +68,7 @@ public class CheckersCLI{
 	
 	private static byte setDifficulty(Scanner sc) throws Exception {
 		System.out.println("Please choose a difficulty level. The higher the number, the harder your opponent.");
-		System.out.println("Note: If you choose a level that exceeds the capabilities of your machine, errors may occur.");
+		System.out.println("\tNote: Difficulties above 10 may take too long on many machines.");
 				
 		byte diff = Byte.parseByte(sc.nextLine());
 		if(diff==0) {

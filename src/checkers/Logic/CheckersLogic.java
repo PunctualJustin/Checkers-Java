@@ -26,12 +26,28 @@ public class CheckersLogic {
 	}
 	
 	/**
-	 * Returns false if either side has no pieces (or kings)
+	 * Returns true if either side has no pieces (or kings)
 	 */
-	public boolean bothHavePieces() {
-		return root.redPieces>0 && root.blackPieces>0;
+	public boolean gameOver() {
+		return root.redPieces==0 || root.blackPieces==0;
 	}
 	
+	/**
+	 * Indicates whether the player or the computer won
+	 * @return a char indicating the color of the winner (B for computer, R for player), or null if the game is not over
+	 */
+	public char getWinner() {
+		char r = '\0';
+		if(gameOver()) {
+			if(root.redPieces>0) {
+				r='R';
+			}else {
+				r='B';
+			}
+		}
+		return r;
+	}
+		
 	/**
 	 * Accepts the human player's move
 	 * @param move An array of bytes that describe the indexes of the positions being moved on the board {posY1, posX1, posY2, posX2, ...} 
@@ -40,51 +56,25 @@ public class CheckersLogic {
 	 */
 	public boolean acceptMove(byte[] move) throws Exception {
 		boolean validMove=false;
-		if(root.children.size()>0){
-			for(Node childNode : root.children){
-				if(Arrays.equals(childNode.move, move)){
-					root=childNode;
-					root.parent=null;
-					validMove=true;
-					break;
+		if(root.nodeBoard.validateMove('R', move)){
+			if(move.length==4 && Math.abs(move[0]-move[2])==1 && Math.abs(move[1]-move[3])==1) {
+				root.nodeBoard.movePiece(move);
+			}else {
+				for(int i=0; i<move.length-3; i=i+2) {
+					byte[] moveCpy = {move[i], move[i+1], move[i+2], move[i+3]};
+					root.nodeBoard.movePiece(moveCpy);
+					byte row = (byte)(move[i+2]+((move[i]-move[i+2])/2));
+					byte col = (byte)(move[i+3]+((move[i+1]-move[i+3])/2));
+					root.nodeBoard.removePiece(row, col);
 				}
 			}
-		}else{
-			if(root.nodeBoard.validateMove('R', move) && root.nodeBoard.movePiece(move)){
-				validMove=true;
-			}
+			root.nodeBoard.kingPiece(move, 'R');
+			root=new Node(root, move);
+			validMove=true;
 		}
-
 		return validMove;
 	}
-	
-	/**
-	 * The computer calculates and completes a move
-	 * @throws Exception
-	 */
-	public void computerMove() throws Exception {
-		//computer makes move
-		buildGameTree(root, 'B');
-		byte iBLeafPieces=0;
-		byte iRLeafPieces=13;
-		int[] bestIndex=new int[root.children.size()];
-		int bestCount=0;
-		for(int i=0; i<root.children.size(); i++){
-			Node childNode=root.children.get(i);
-			if(childNode.inductiveRedLeafPieces<iRLeafPieces || (childNode.inductiveRedLeafPieces==iRLeafPieces && childNode.inductiveBlackLeafPieces>iBLeafPieces)){
-				iRLeafPieces = childNode.inductiveRedLeafPieces;
-				iBLeafPieces = childNode.inductiveBlackLeafPieces;
-				bestIndex[0] = i;
-				bestCount = 1;
-			}else if(childNode.inductiveRedLeafPieces==iRLeafPieces && childNode.inductiveBlackLeafPieces==iBLeafPieces){
-				bestIndex[bestCount] = i;
-				bestCount++;
-			}
-		}
 
-		root=root.children.get(bestIndex[(int)Math.floor(Math.random()*bestCount)]);
-	}
-	
 	/**
 	 * returns the last move made
 	 * @return An array of bytes that describe the indexes of the positions being moved on the board {posY1, posX1, posY2, posX2, ...}
@@ -94,85 +84,12 @@ public class CheckersLogic {
 	}
 	
 	/**
-	 * Determines the next possible moves to be made by each player
-	 * @param root The root Node
-	 * @param color 'R' or 'B' for red or black respectively. Human player is red.
+	 * The computer calculates and completes a move
 	 * @throws Exception
 	 */
-	private void buildGameTree(Node root, char color) throws Exception{
-		boolean outOfMemory = false;
-		
-		byte height = getHeight(root, (byte)0);
-		color = height%2==0 ? 'B' : 'R';
-		while(!outOfMemory && height<gameDepth) {
-			outOfMemory = addAtHeight(root, color, (byte)0, height);
-			if(!outOfMemory) {
-				height++;
-				color = color=='R' ? 'B' : 'R';
-			}
-		}
-		if(outOfMemory) {
-			System.gc();
-		}
-	}
-	
-	/**
-	 * Gets the current height of the game tree (recursive)
-	 * @param node current node (call on root)
-	 * @param The current height the method is called at.
-	 * @return The height of the game tree
-	 */
-	private byte getHeight(Node node, byte height) {
-		if(node.children.size()>0) {
-			byte maxHeight=0;
-			byte currHeight=0;
-			for(Node child : node.children) {
-				currHeight = getHeight(child, (byte)(height+1));
-				if(currHeight>maxHeight) {
-					maxHeight=currHeight;
-				}
-			}
-			return maxHeight;
-		}
-		return height;
-	}
-
-	/**
-	 * Finds the valid children (moves) for the node at the given height
-	 * @param parent The parent Node
-	 * @param colorIn 'R' or 'B' for red or black respectively. Human player is red.
-	 * @param level The current height the method is called at.
-	 * @param height The height at which to find valid moves and add children
-	 * @return Whether the program ran out of memory
-	 * @throws Exception
-	 */
-	private boolean addAtHeight(Node parent, char colorIn, byte level, byte height) throws Exception{
-		if(level<height) {
-			boolean outOfMemory = false;
-			int childIndex = 0;
-			int numChildren = parent.children.size();
-			for(; childIndex<numChildren; childIndex++) {
-				outOfMemory = addAtHeight(parent.children.get(childIndex), colorIn, (byte)(level+1), height);
-				if(outOfMemory) {
-					if(height==level) {
-						//parent.children=new ArrayList<Node>();
-						parent.children=null;
-					}else{
-						for(childIndex-=1; childIndex>=0; childIndex--) {
-							destroyUnevenChildren(parent.children.get(childIndex), (byte)(level+1), height);
-						}
-					}
-					return true;
-				}
-			}
-		}else if(level==height){
-			try {
-				addChildren(parent, colorIn);
-			}catch(OutOfMemoryError e) {
-				return true;
-			}
-		}
-		return false;
+	public void computerMove() throws Exception {
+		addChildren(root, 0, gameDepth);
+		root = root.bestChoice;
 	}
 	
 	/**
@@ -181,8 +98,10 @@ public class CheckersLogic {
 	 * @param colorIn
 	 * @throws Exception
 	 */
-	private void addChildren(Node parent, char colorIn) throws Exception {
+	private void addChildren(Node parent, int height, int maxHeight) throws Exception {
 		Board board=parent.nodeBoard;
+		char colorIn = parent.color;
+		boolean setBreak=false;
 		for(int r=0; r<8; r++){
 			for(int c=0; c<8; c++){
 				if(board.getPieces()[r][c]!=null && board.getPieces()[r][c].color==colorIn){
@@ -190,23 +109,35 @@ public class CheckersLogic {
 						byte[] tryMove = {(byte)r,(byte)c,(byte)(r-1),(byte)(c-1)};
 						byte[] tryHop = {(byte)r,(byte)c,(byte)(r-2),(byte)(c-2)};
 						byte[] delta= {(byte)-1, (byte)-1};
-						moveOrHop(board, parent, colorIn, tryMove, tryHop, delta);
+						setBreak=moveOrHop(board, parent, colorIn, tryMove, tryHop, delta, height+1, maxHeight);
+						if(setBreak) {
+							break;
+						}
 						tryMove[3] = (byte)(c+1);
 						tryHop[3] = (byte)(c+2);
 						delta[1] = (byte)+1;
-						moveOrHop(board, parent, colorIn, tryMove, tryHop, delta);
+						setBreak=moveOrHop(board, parent, colorIn, tryMove, tryHop, delta, height+1, maxHeight);
 					}
 					if(board.getPieces()[r][c].color=='B' || board.getPieces()[r][c].king){
 						byte[] tryMove = {(byte)r,(byte)c,(byte)(r+1),(byte)(c-1)};
 						byte[] tryHop = {(byte)r,(byte)c,(byte)(r+2),(byte)(c-2)};
 						byte[] delta = {(byte)+1, (byte)-1};
-						moveOrHop(board, parent, colorIn, tryMove, tryHop, delta);
+						setBreak=moveOrHop(board, parent, colorIn, tryMove, tryHop, delta, height+1, maxHeight);
+						if(setBreak) {
+							break;
+						}
 						tryMove[3] = (byte)(c+1);
 						tryHop[3] = (byte)(c+2);
 						delta[1] = (byte)+1;
-						moveOrHop(board, parent, colorIn, tryMove, tryHop, delta);
+						setBreak=moveOrHop(board, parent, colorIn, tryMove, tryHop, delta, height+1, maxHeight);
+					}
+					if(setBreak) {
+						break;
 					}
 				}
+			}
+			if(setBreak) {
+				break;
 			}
 		}
 	}
@@ -221,12 +152,20 @@ public class CheckersLogic {
 	 * @param delta
 	 * @throws Exception
 	 */
-	private void moveOrHop(Board board, Node parent, char colorIn, byte[] tryMove, byte[] tryHop, byte[] delta) throws Exception{
+	private boolean moveOrHop(Board board, Node parent, char colorIn, byte[] tryMove, byte[] tryHop, byte[] delta, int height, int maxHeight) throws Exception{
 		if(board.validateMove(colorIn, tryMove)){
-			addValidMoveNode(parent, colorIn, tryMove);
+			addValidMoveNode(parent, colorIn, tryMove, height, maxHeight);
 		}else if(board.validateMove(colorIn, tryHop)){
-			addValidHopNode(parent, colorIn, tryHop);
+			addValidHopNode(parent, colorIn, tryHop, height, maxHeight);
 		}
+		return evaluateAlphaBeta(parent);
+	}
+	
+	private boolean evaluateAlphaBeta(Node node) {
+		if(node.alphaPieces>=node.betaPieces) {
+			return true;
+		}
+		return false;
 	}
 	
 	/**
@@ -237,7 +176,7 @@ public class CheckersLogic {
 	 * @param tryHop The previous hop move to build onto
 	 * @throws Exception
 	 */
-	private void addNthHop(Board board, Node parent, char colorIn, byte[] tryHop) throws Exception {
+	private void addNthHop(Board board, Node parent, char colorIn, byte[] tryHop, int height, int maxHeight) throws Exception {
 		int thLen = tryHop.length;
 		byte r=tryHop[thLen-2];
 		byte c=tryHop[thLen-1];
@@ -247,16 +186,16 @@ public class CheckersLogic {
 		if(board.getPieces()[r][c].color=='R' || board.getPieces()[r][c].king){
 			shortHop[2]=(byte)(r-2);
 			shortHop[3]=(byte)(c-2);
-			nthHop(board, parent, colorIn, tryHop, shortHop);
+			nthHop(board, parent, colorIn, tryHop, shortHop, height, maxHeight);
 			shortHop[3]=(byte)(c+2);
-			nthHop(board, parent, colorIn, tryHop, shortHop);
+			nthHop(board, parent, colorIn, tryHop, shortHop, height, maxHeight);
 		}
 		if(board.getPieces()[r][c].color=='B' || board.getPieces()[r][c].king){
 			shortHop[2]=(byte)(r+2);
 			shortHop[3]=(byte)(c-2);
-			nthHop(board, parent, colorIn, tryHop, shortHop);
+			nthHop(board, parent, colorIn, tryHop, shortHop, height, maxHeight);
 			shortHop[3]=(byte)(c+2);
-			nthHop(board, parent, colorIn, tryHop, shortHop);
+			nthHop(board, parent, colorIn, tryHop, shortHop, height, maxHeight);
 		}
 	}
 	
@@ -269,7 +208,7 @@ public class CheckersLogic {
 	 * @param shortHop
 	 * @throws Exception
 	 */
-	private void nthHop(Board board, Node parent, char colorIn, byte[] tryHop, byte[] shortHop) throws Exception {
+	private void nthHop(Board board, Node parent, char colorIn, byte[] tryHop, byte[] shortHop, int height, int maxHeight) throws Exception {
 		if(board.validateMove(colorIn, shortHop)){
 			int thLen=tryHop.length;
 			byte[] newHop = new byte[thLen+2];
@@ -278,7 +217,7 @@ public class CheckersLogic {
 			}
 			newHop[thLen]=shortHop[2];
 			newHop[thLen+1]=shortHop[3];
-			addValidHopNode(parent, colorIn, newHop);
+			addValidHopNode(parent, colorIn, newHop, height, maxHeight);
 		}
 	}
 	
@@ -289,14 +228,21 @@ public class CheckersLogic {
 	 * @param tryMove
 	 * @throws Exception
 	 */
-	private void addValidMoveNode(Node parent, char colorIn, byte[] tryMove) throws Exception{
+	private void addValidMoveNode(Node parent, char colorIn, byte[] tryMove, int height, int maxHeight) throws Exception{
 		Node tempNode=new Node(parent, tryMove);
 		if(tempNode.nodeBoard.movePiece(tryMove)){
 			tempNode.nodeBoard.kingPiece(tryMove, colorIn);
-			parent.children.add(tempNode);
-			tempNode.inductiveRedLeafPieces=tempNode.redPieces;
-			tempNode.inductiveBlackLeafPieces=tempNode.blackPieces;
-			trackLeafPieces(tempNode, colorIn);
+			//parent.children.add(tempNode);
+			//alpha/beta
+			if(height==maxHeight) {
+				tempNode.evaluate();
+				tempNode.passAlphaBeta();
+			}else {
+				//go deeper
+				addChildren(tempNode, height, maxHeight);
+				//pass up alpha-beta
+				tempNode.passAlphaBeta();
+			}
 		}else{
 			throw new Exception("could not move piece");
 		}
@@ -309,7 +255,7 @@ public class CheckersLogic {
 	 * @param tryMove
 	 * @throws Exception
 	 */
-	private void addValidHopNode(Node parent, char colorIn, byte[] tryHop) throws Exception{
+	private void addValidHopNode(Node parent, char colorIn, byte[] tryHop, int height, int maxHeight) throws Exception{
 		Node tempNode=new Node(parent, tryHop);
 		for(int i=0; i<=tryHop.length-4; i+=2) {
 			if(tempNode.nodeBoard.movePiece(tryHop[i], tryHop[i+1], tryHop[i+2], tryHop[i+3])){
@@ -326,60 +272,27 @@ public class CheckersLogic {
 			}
 		}
 		tempNode.nodeBoard.kingPiece(tryHop, colorIn);
-		parent.children.add(tempNode);
-		tempNode.inductiveRedLeafPieces=tempNode.redPieces;
-		tempNode.inductiveBlackLeafPieces=tempNode.blackPieces;
-		trackLeafPieces(tempNode, colorIn);
-		addNthHop(tempNode.nodeBoard, parent, colorIn, tryHop);
-	}
-	
-	/**
-	 * Destroys all of the leafs of this subtree from the indicated level
-	 * @param node The current Node
-	 * @param level The current height the method is called at.
-	 * @param destroyLevel The height at which to remove children
-	 */
-	private void destroyUnevenChildren(Node node, byte level, byte destroyLevel) {
-		if(level<destroyLevel) {
-			if(node.children!=null) {
-				int numChildren = node.children.size();
-				for(int childIndex = 0; childIndex<numChildren; childIndex++) {
-					destroyUnevenChildren(node.children.get(childIndex), (byte)(level+1), destroyLevel);
-				}
+		//parent.children.add(tempNode);
+		if(height==maxHeight) {
+			tempNode.evaluate();
+			tempNode.passAlphaBeta();
+		}else {
+			//go deeper
+			if(tempNode.redPieces>0&&tempNode.blackPieces>0) {
+				addChildren(tempNode, height, maxHeight);
+			}else {
+				tempNode.evaluate();
 			}
-		}else if(level==destroyLevel){
-			node.children=null;
-			//System.gc();
+			//pass up alpha-beta
+			tempNode.passAlphaBeta();
 		}
+		addNthHop(tempNode.nodeBoard, parent, colorIn, tryHop, height, maxHeight);
+	}
 		
-	}
-
-	private static void trackLeafPieces(Node cNode, char color){
-		while(cNode.parent!=null){
-			Node pNode=cNode.parent;
-			if(color=='R'){
-				if((cNode.inductiveBlackLeafPieces<pNode.inductiveBlackLeafPieces) || (cNode.inductiveBlackLeafPieces==pNode.inductiveBlackLeafPieces && cNode.inductiveRedLeafPieces>pNode.inductiveRedLeafPieces)){
-					color = 'B';
-				}else{
-					break;
-				}
-			}else{
-				if((cNode.inductiveRedLeafPieces<pNode.inductiveRedLeafPieces) || (cNode.inductiveRedLeafPieces==pNode.inductiveRedLeafPieces && cNode.inductiveBlackLeafPieces>pNode.inductiveBlackLeafPieces)){
-					color = 'R';
-				}else{
-					break;
-				}
-			}
-			pNode.inductiveRedLeafPieces=cNode.inductiveRedLeafPieces;
-			pNode.inductiveBlackLeafPieces=cNode.inductiveBlackLeafPieces;
-			cNode=pNode;
-		}
-	}
-	
 	/**
 	 * Nodes contain a given move and the meta data around it, including the move sequence (parent and children). 
 	 * 
-	 * @author Justin
+	 * @author Justin Gaudet
 	 *
 	 */
 	private class Node{
@@ -387,21 +300,29 @@ public class CheckersLogic {
 		public ArrayList<Node> children;
 		public Node parent;
 		public byte[] move;
+		public char color;
 		public byte redPieces;
 		public byte blackPieces;
-		public byte inductiveRedLeafPieces;
-		public byte inductiveBlackLeafPieces;
+		public Node bestChoice;
+		public byte value;
+		public byte alphaPieces;
+		public byte betaPieces;
+		public byte depth;
 		
 		public Node(){
+			depth=0;
 			nodeBoard=new Board();
 			redPieces=12;
 			blackPieces=12;
 			children=new ArrayList<Node>();
-			inductiveRedLeafPieces=12;
-			inductiveBlackLeafPieces=12;
+			alphaPieces=Byte.MIN_VALUE;
+			betaPieces=Byte.MAX_VALUE;
+			color='R';
+			value= color=='R' ? Byte.MAX_VALUE : Byte.MIN_VALUE;
 		}
 		
 		public Node(Node parentIn, byte[] moveIn){
+			depth=(byte)(parentIn.depth+1);
 			move=new byte[moveIn.length];
 			for(int i=0; i<move.length; i++){
 				move[i]=moveIn[i];
@@ -411,29 +332,85 @@ public class CheckersLogic {
 			blackPieces=parentIn.blackPieces;
 			nodeBoard=new Board(parentIn.nodeBoard);
 			children=new ArrayList<Node>();
-			inductiveRedLeafPieces=12;
-			inductiveBlackLeafPieces=12;
+			alphaPieces=parentIn.alphaPieces;
+			betaPieces=parentIn.betaPieces;
+			color = parentIn.color=='R' ? 'B' : 'R';
+			value= color=='R' ? Byte.MAX_VALUE : Byte.MIN_VALUE;
+		}
+		
+		public void evaluate() {
+			byte eval;
+			if(blackPieces==0) {
+				eval=Byte.MIN_VALUE+1;
+			}else if(redPieces==0) {
+				eval=Byte.MAX_VALUE-1;
+			}else{
+				eval = (byte)(blackPieces-redPieces);
+			}
+			value=eval;
+			if(color=='R') {
+				betaPieces=eval;
+			}else{
+				alphaPieces=eval;
+			}
+		}
+		
+		public void passAlphaBeta(){
+			if(parent.color=='R'){
+				if(parent.betaPieces>value){
+					parent.betaPieces=value;
+					parent.value=alphaPieces;
+					parent.bestChoice=this;
+				}else if(parent.value>value) {
+					parent.value=value;
+					parent.bestChoice=this;
+				}
+			}else{
+				if(parent.alphaPieces<value){
+					parent.alphaPieces=value;
+					parent.value=betaPieces;
+					parent.bestChoice=this;
+				}else if(parent.value<value) {
+					parent.value=value;
+					parent.bestChoice=this;
+				}
+			}
 		}
 		
 		public String toString(){
-			String str="Node\n";
-			str+="\tnodeBoard != null : "+(nodeBoard!=null)+"\n";
-			str+="\tHas parent : "+(parent!=null)+"\n";
-			str+="\tno move : ";
-			if(move!=null){
-				str+=move[0]+", "+move[1]+", "+move[2]+", "+move[3]+"\n";
-			}else{
-				str+="none\n";
-			}
-			str+="\tNumber of children : "+children.size()+"\n";
-			str+="\tredPieces : "+redPieces+"\n";
-			str+="\tblackPieces : "+blackPieces+"\n";
-			str+="\tinductiveRedLeafPieces : "+inductiveRedLeafPieces+"\n";
-			str+="\tinductiveBlackLeafPieces : "+inductiveBlackLeafPieces+"";
+			String str="Node "+color+depth+" ";
+			str+="Value "+value+" ";
+			str+="Alpha "+alphaPieces+" Beta "+betaPieces;
+			str+=" with move "+Arrays.toString(move);
 			return str;
 		}
 	}
-		
+	
+	public void debugSimpleOptTest() {
+		Board board = root.nodeBoard;
+		int red=1;
+		int black=3;
+		root.redPieces=1;
+		root.blackPieces=3;
+		for(int r=0; r<8; r++){
+			for(int c=0; c<8; c++){
+				if(board.getPieces()[r][c]!=null){
+					if(board.getPieces()[r][c].color=='R'&& red<12){
+						red++;
+						board.removePiece((byte)r, (byte)c);
+					}else if(board.getPieces()[r][c].color=='B'&& black<12){
+						black++;
+						board.removePiece((byte)r, (byte)c);
+					}
+				}
+			}
+		}
+		byte[] move = {7, 7, 5, 7};
+		board.movePiece(move);
+		byte[] move1 = {2, 2, 1, 7};
+		board.movePiece(move1);
+	}
+	
 	public void debugTestKingSetup() {
 		Board board = root.nodeBoard;
 		byte row=0;
@@ -529,7 +506,4 @@ public class CheckersLogic {
 	}
 }
 
-
-//TODO: Make stale mate a secondary option rather than an equal one
-//TODO: pass up the leastblack rather than the most black leaf nodes
 //TODO: Add custom exceptions
