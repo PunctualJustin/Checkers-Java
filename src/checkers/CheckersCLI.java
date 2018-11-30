@@ -1,6 +1,8 @@
 package checkers;
 
 import java.util.Scanner;
+
+import checkers.Logic.Board;
 import checkers.Logic.CheckersLogic;
 
 public class CheckersCLI{
@@ -20,20 +22,21 @@ public class CheckersCLI{
 		}
 		
 		CheckersLogic game = new CheckersLogic(gameLevel);
-		System.out.println(" "+(int)game.getWinner());
 		//Test setup methods
 		//game.debugSimpleOptTest();
-		//game.debugTestKingSetup();
+		game.debugTestKingBlack();
+		//game.debugTestKingRed();
 		//game.debugTestDoubleHopRed();
 		//game.debugTestDoubleHopBlack();
+		//game.debugRandomLastMove();
 		
 		String input="";
 		System.out.println(game.getBoard());
 		System.out.println();
-		System.out.print("You are Red, make the first move:");
+		System.out.print("You are Red, make the first move: ");
 		try {
 			while(!game.gameOver() && !input.equals("0")){
-				input = sc.nextLine().toUpperCase();
+				input = sc.nextLine();
 				byte[] move;
 				try {
 					move=parseMove(input);
@@ -46,13 +49,14 @@ public class CheckersCLI{
 				if(game.acceptMove(move)) {
 					if(game.gameOver()) {
 						System.out.println("GAME OVER: YOU WIN!");
-					}else {
+					} else {
 						game.computerMove();
-						System.out.println("My move: "+moveToString(game.getLastMove()));
-						System.out.println(game.getBoard());
 						if(game.gameOver()) {
+							System.out.println(game.getBoard());
 							System.out.println("GAME OVER: I WIN!");
-						}else {
+						} else {
+							System.out.println("My move: "+moveToString(game.getLastMove()));
+							System.out.println(game.getBoard());
 							System.out.print("Your move: ");
 						}
 					}
@@ -82,11 +86,17 @@ public class CheckersCLI{
 		if(len%2==1) {
 			throw new Exception("moves must have an even number of characters to completely define positions");
 		}
+		move=move.replaceAll(" ", "");
+		move=move.toUpperCase();
 		byte[] retVal=new byte[len];
 		try{
 			for(int i=0; i<len; i++) {
 				if(i%2==0) {
-					retVal[i]=(byte)(move.charAt(i)-65);
+					if(move.charAt(i)>='A' && move.charAt(i)<='H') {
+						retVal[i]=(byte)(move.charAt(i)-65);
+					}else {
+						throw new Exception("moves must be between rows A and H");
+					}
 				}else{
 					retVal[i]=(byte)(Integer.parseInt(""+move.charAt(i))-1);
 				}
@@ -99,13 +109,17 @@ public class CheckersCLI{
 	
 	private static String moveToString(byte[] move){
 		String retVal = "";
-		try{
-			for(int i=0; i<move.length; i+=2) {
-				retVal += (char)(move[i]+65);
-				retVal += (move[(i+1)]+1)+" ";
+		if(move.length==0) {
+			retVal = "pass";
+		}else {	
+			try{
+				for(int i=0; i<move.length; i+=2) {
+					retVal += (char)(move[i]+65);
+					retVal += (move[(i+1)]+1)+" ";
+				}
+			}catch(Exception e){
+				retVal = "Error converting move to string.";
 			}
-		}catch(Exception e){
-			retVal = "Error converting move to string.";
 		}
 		return retVal;
 	}

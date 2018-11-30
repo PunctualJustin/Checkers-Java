@@ -66,6 +66,7 @@ public class CheckersLogic {
 					byte row = (byte)(move[i+2]+((move[i]-move[i+2])/2));
 					byte col = (byte)(move[i+3]+((move[i+1]-move[i+3])/2));
 					root.nodeBoard.removePiece(row, col);
+					root.blackPieces--;
 				}
 			}
 			root.nodeBoard.kingPiece(move, 'R');
@@ -80,7 +81,9 @@ public class CheckersLogic {
 	 * @return An array of bytes that describe the indexes of the positions being moved on the board {posY1, posX1, posY2, posX2, ...}
 	 */
 	public byte[] getLastMove() {
-		return root.move;
+		byte[] move;
+		move = root.move;
+		return move;
 	}
 	
 	/**
@@ -89,7 +92,12 @@ public class CheckersLogic {
 	 */
 	public void computerMove() throws Exception {
 		addChildren(root, 0, gameDepth);
-		root = root.bestChoice;
+		if(root.bestChoice==null) {
+			byte[] move = new byte[0];
+			root = new Node(root, move);
+		}else {
+			root = root.bestChoice;
+		}
 	}
 	
 	/**
@@ -271,12 +279,12 @@ public class CheckersLogic {
 				throw new Exception("could not move piece");
 			}
 		}
-		tempNode.nodeBoard.kingPiece(tryHop, colorIn);
+		boolean king=tempNode.nodeBoard.kingPiece(tryHop, colorIn);
 		//parent.children.add(tempNode);
 		if(height==maxHeight) {
 			tempNode.evaluate();
 			tempNode.passAlphaBeta();
-		}else {
+		}else{
 			//go deeper
 			if(tempNode.redPieces>0&&tempNode.blackPieces>0) {
 				addChildren(tempNode, height, maxHeight);
@@ -411,7 +419,31 @@ public class CheckersLogic {
 		board.movePiece(move1);
 	}
 	
-	public void debugTestKingSetup() {
+	public void debugTestKingBlack() {
+		Board board = root.nodeBoard;
+		byte row=4;
+		byte col=6;
+		byte rowFr = 6;
+		byte colFr = 0;
+		byte[] move = {rowFr, colFr, row, col};
+		board.movePiece(move);
+		rowFr = 7;
+		colFr = 1;
+		col = 4;
+		move[0] = rowFr;
+		move[1] = colFr;
+		move[3] = col;
+		board.movePiece(move);
+		rowFr = 1;
+		row = 6;
+		col = 0;
+		move[0] = rowFr;
+		move[2] = row;
+		move[3] = col;
+		board.movePiece(move);
+	}
+
+	public void debugTestKingRed() {
 		Board board = root.nodeBoard;
 		byte row=0;
 		byte col=4;
@@ -446,7 +478,7 @@ public class CheckersLogic {
 		move[3] = col;
 		board.movePiece(move);
 	}
-
+		
 	public void debugTestDoubleHopRed() {
 		Board board = root.nodeBoard;
 		byte row=0;
@@ -491,7 +523,7 @@ public class CheckersLogic {
 		move[3] = col;
 		board.movePiece(move);
 	}
-
+	
 	public void debugTestDoubleHopBlack() {
 		Board board = root.nodeBoard;
 		byte row=7;
@@ -504,6 +536,72 @@ public class CheckersLogic {
 		byte[] move = {rowFr, colFr, row, col};
 		board.movePiece(move);
 	}
+
+	public void debugRandomLastMove() {
+
+		Board board = root.nodeBoard;
+		int red=8;
+		int black=10;
+		root.redPieces=8;
+		root.blackPieces=10;
+		for(int r=0; r<8; r++){
+			for(int c=0; c<8; c++){
+				if(board.getPieces()[r][c]!=null){
+					if(board.getPieces()[r][c].color=='R'&& red>0){
+						red--;
+					}else if(board.getPieces()[r][c].color=='R'){
+						board.removePiece((byte)r, (byte)c);
+					}else if(board.getPieces()[r][c].color=='B'&& black<12){
+						black++;
+						board.removePiece((byte)r, (byte)c);
+					}
+				}
+			}
+		}
+		//red
+		byte rowfr=6;
+		byte colfr=2;
+		byte rowto=4;
+		byte colto=0;
+		board.movePiece(rowfr, colfr, rowto, colto);
+		
+		rowfr=6;
+		colfr=4;
+		rowto=4;
+		colto=6;
+		board.movePiece(rowfr, colfr, rowto, colto);
+		
+		rowfr=6;
+		colfr=6;
+		rowto=3;
+		colto=7;
+		board.movePiece(rowfr, colfr, rowto, colto);
+		
+		//black
+		rowfr=2;
+		colfr=0;
+		rowto=3;
+		colto=1;
+		board.movePiece(rowfr, colfr, rowto, colto);
+
+		rowfr=1;
+		colfr=1;
+		rowto=4;
+		colto=2;
+		board.movePiece(rowfr, colfr, rowto, colto);
+
+		rowfr=0;
+		colfr=6;
+		rowto=3;
+		colto=5;
+		board.movePiece(rowfr, colfr, rowto, colto);
+		
+
+		byte[] move = {0, 4, 7, 7};
+		board.movePiece(move);
+		board.kingPiece(move, 'B');
+	}
+
 }
 
 //TODO: Add custom exceptions

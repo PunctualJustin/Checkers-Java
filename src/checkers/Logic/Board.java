@@ -1,7 +1,5 @@
 package checkers.Logic;
 
-//TODO: change how pieces are handled. make the pieces array a 1d array with locations stored in the piece instead of 2d
-
 public class Board{
 	private Piece[][] pieces;
 	private static final boolean debug=true;
@@ -123,8 +121,8 @@ public class Board{
 		byte lastRow=move[move.length-2];
 		byte lastCol=move[move.length-1];
 		if((colorIn=='R' && lastRow==0) || (colorIn=='B' && lastRow==7)) {
-			//TODO: is it really necessary to create a new piece?
-			//pieces[lastRow][lastCol]=new Piece(pieces[lastRow][lastCol]);
+			//Piece needs to be copied to avoid kinging pieces in ALL instances/states of the board
+			pieces[lastRow][lastCol]=new Piece(pieces[lastRow][lastCol]);
 			pieces[lastRow][lastCol].king = true;
 			success=true;
 		}
