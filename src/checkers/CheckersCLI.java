@@ -24,7 +24,7 @@ public class CheckersCLI{
 		CheckersLogic game = new CheckersLogic(gameLevel);
 		//Test setup methods
 		//game.debugSimpleOptTest();
-		game.debugTestKingBlack();
+		//game.debugTestKingBlack();
 		//game.debugTestKingRed();
 		//game.debugTestDoubleHopRed();
 		//game.debugTestDoubleHopBlack();
@@ -36,7 +36,12 @@ public class CheckersCLI{
 		System.out.print("You are Red, make the first move: ");
 		try {
 			while(!game.gameOver() && !input.equals("0")){
-				input = sc.nextLine();
+				boolean hasMove = game.userHasMove();
+				if(hasMove) {
+					input = sc.nextLine();
+				}else {
+					input = "";
+				}
 				byte[] move;
 				try {
 					move=parseMove(input);
@@ -45,8 +50,8 @@ public class CheckersCLI{
 					input = sc.nextLine().toUpperCase();
 					continue;
 				}
-								
-				if(game.acceptMove(move)) {
+				
+				if(game.acceptMove(move, hasMove)) {
 					if(game.gameOver()) {
 						System.out.println("GAME OVER: YOU WIN!");
 					} else {
